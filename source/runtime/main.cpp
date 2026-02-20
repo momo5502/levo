@@ -1,0 +1,120 @@
+#include "system.hpp"
+#include "external.hpp"
+#include "handler_utils.hpp"
+#include "execution_manager.hpp"
+
+#include <print>
+#include <shared/io.hpp>
+#include <shared/finally.hpp>
+#include <shared/pe_mapper.hpp>
+
+namespace levo::runtime
+{
+    namespace
+    {
+        std::vector<uint8_t> map_binary(const pe_import_resolver_t& import_resolver)
+        {
+            std::span<const uint8_t> data(binary_data, binary_size);
+            return map_pe_file(data, import_resolver);
+        }
+
+        addr_t f_GetStdHandle(const handler_context&, addr_t handle)
+        {
+            if (handle == (addr_t)-11)
+            {
+                return 1;
+            }
+
+            return (addr_t)~0ULL;
+        }
+
+        addr_t f_WriteFile(const handler_context& c, addr_t handle, addr_t buffer, uint32_t size, addr_t written_size, addr_t)
+        {
+            size_t written = 0;
+            const auto _ = finally([&] {
+                if (written_size)
+                {
+                    c.m.write(written_size, static_cast<uint32_t>(written));
+                }
+            });
+
+            if (handle != 1)
+            {
+                return 0;
+            }
+
+            const auto string = c.m.read(buffer, size);
+            written = fwrite(string->data(), 1, string->size(), stdout);
+
+            return 1;
+        }
+
+        void f_ExitProcess(const handler_context&, uint32_t exit_code)
+        {
+            exit(static_cast<int>(exit_code));
+        }
+
+        int run()
+        {
+            execution_manager manager{};
+
+            addr_t import_address = 0xF << (ADDRESS_SIZE_BITS - 4);
+
+            const auto import_resolver = [&](std::string_view library_name, std::string_view function_name) {
+                const auto address = import_address++;
+                std::println("Importing {}::{} at 0x{:x}", library_name, function_name, address);
+
+                if (function_name == "GetStdHandle")
+                {
+                    manager.add_function(address, make_handler<calling_convention::stdcall, f_GetStdHandle>());
+                }
+                if (function_name == "WriteFile")
+                {
+                    manager.add_function(address, make_handler<calling_convention::stdcall, f_WriteFile>());
+                }
+                if (function_name == "ExitProcess")
+                {
+                    manager.add_function(address, make_handler<calling_convention::stdcall, f_ExitProcess>());
+                }
+
+                return address;
+            };
+            manager.map(0x400000, map_binary(import_resolver));
+            manager.map(0x100000, 0x100000);
+
+            for (size_t i = 0;; i++)
+            {
+                const auto& entry = dispatch_table[i];
+                if (entry.address == 0)
+                {
+                    break;
+                }
+
+                manager.add_function(entry.address, entry.function);
+            }
+
+            State state{};
+            state.gpr.rip.aword = 0x401040;
+            state.gpr.rsp.aword = 0x100000 + 0x100000 - 0x10;
+
+            manager.run(state);
+
+            return 0;
+        }
+    }
+}
+
+int main(int argc, char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    try
+    {
+        return levo::runtime::run();
+    }
+    catch (const std::exception& e)
+    {
+        std::println("Error: {}", e.what());
+    }
+}
