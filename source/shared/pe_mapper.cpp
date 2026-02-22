@@ -1,4 +1,5 @@
 #include "pe_mapper.hpp"
+
 #include <algorithm>
 #include <cstring>
 #include <optional>
@@ -187,6 +188,51 @@ namespace levo
 
             return mapped_data;
         }
+    }
+
+    std::optional<pe_architecture> get_pe_architecture(std::span<const uint8_t> data)
+    {
+        constexpr size_t dos_header_size = sizeof(pe_dos_header);
+        constexpr size_t file_header_size = sizeof(pe_file_header);
+
+        if (data.size() < dos_header_size)
+        {
+            return std::nullopt;
+        }
+
+        const auto* dos = reinterpret_cast<const pe_dos_header*>(data.data());
+        if (dos->e_magic != pe::dos_signature)
+        {
+            return std::nullopt;
+        }
+
+        const uint32_t e_lfanew = dos->e_lfanew;
+        const size_t nt_offset = e_lfanew + 4u; // after "PE\0\0"
+
+        if (nt_offset + file_header_size + 2u > data.size()) // need file header + at least magic
+        {
+            return std::nullopt;
+        }
+
+        if (std::memcmp(data.data() + e_lfanew, "PE\0\0", 4) != 0)
+        {
+            return std::nullopt;
+        }
+
+        const auto* file_header = reinterpret_cast<const pe_file_header*>(data.data() + nt_offset);
+        const uint16_t optional_magic = *reinterpret_cast<const uint16_t*>(data.data() + nt_offset + file_header_size);
+
+        if (optional_magic == pe::optional_header_magic_32)
+        {
+            return pe_architecture::x86;
+        }
+
+        if (optional_magic == pe::optional_header_magic_64)
+        {
+            return pe_architecture::x64;
+        }
+
+        return std::nullopt;
     }
 
     std::vector<uint8_t> map_pe_file(std::span<const uint8_t> data, const pe_import_resolver_t& import_resolver)

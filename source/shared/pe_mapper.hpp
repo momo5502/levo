@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <span>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -174,4 +175,12 @@ namespace levo
     std::vector<uint8_t> map_pe_file(std::span<const uint8_t> data, const pe_import_resolver_t& import_resolver = {});
 
     uint64_t get_entry_point(std::span<const uint8_t> data);
+
+    enum class pe_architecture
+    {
+        x86,
+        x64,
+    };
+
+    std::optional<pe_architecture> get_pe_architecture(std::span<const uint8_t> data);
 }

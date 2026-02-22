@@ -508,12 +508,18 @@ namespace levo
 
             Cfg cfg = load_cfg(cfg_path);
             const auto binary_data = load_binary(binary_path);
+            const auto architecture = get_pe_architecture(binary_data);
+            if (!architecture)
+            {
+                llvm::errs() << "Failed to get PE architecture\n";
+                return 1;
+            }
+
             const auto image = map_pe_file(binary_data);
 
             llvm::LLVMContext context;
 
-            // x86-64 Windows (match helpers); use "x86" for 32-bit when using x86_32 helpers
-            remill::Arch::ArchPtr arch = remill::Arch::Get(context, "windows", "x86");
+            remill::Arch::ArchPtr arch = remill::Arch::Get(context, "windows", *architecture == pe_architecture::x64 ? "amd64" : "x86");
             if (!arch)
             {
                 llvm::errs() << "Failed to get remill arch (windows/amd64)\n";
