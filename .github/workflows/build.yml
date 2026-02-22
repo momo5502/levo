@@ -40,13 +40,58 @@ jobs:
         run: |
           cd source && find . -regex '.*\.\(cpp\|hpp\|cc\|cxx\|h\|c\)' -exec clang-format-${{ env.LLVM_VERSION }} -style=file --dry-run --Werror {} +
 
+  build-linux:
+    name: Build Linux x86_64
+    runs-on: ubuntu-22.04
+    # We use a clean container to avoid LLVM conflicts on the GH runner images
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Install LLVM and build tools
+        run: |
+          export LLVM_VERSION=19
+          apt update
+          apt install --no-install-recommends -y \
+            lsb-release \
+            wget \
+            software-properties-common \
+            gnupg \
+            cmake \
+            ninja-build \
+            python-is-python3 \
+            python3-pip \
+            python3-setuptools \
+            python3-venv \
+            git
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          ./llvm.sh $LLVM_VERSION
+          apt install --no-install-recommends -y \
+            llvm-$LLVM_VERSION-dev
+          echo "LLVM_PREFIX=$(llvm-config-$LLVM_VERSION --prefix)" >> $GITHUB_ENV
+          echo "CC=clang-$LLVM_VERSION" >> $GITHUB_ENV
+          echo "CXX=clang++-$LLVM_VERSION" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Add workspace as safe directory (necessary for docker)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build dependencies
+        run: |
+          cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:FILEPATH=$LLVM_PREFIX" -DCMAKE_BUILD_TYPE=Release
+          cmake --build dependencies/build
+
+      - name: Build project
+        run: |
+          cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build
+
   summary:
     name: Pipeline Summary
     runs-on: ubuntu-24.04
-    needs:
-      [
-        verify-formatting,
-      ]
+    needs: [verify-formatting, build-linux]
     if: always()
     steps:
       - uses: geekyeggo/delete-artifact@v5
