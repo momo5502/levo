@@ -1,0 +1,59 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "**"
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-formatting:
+    name: Verify Formatting
+    runs-on: ubuntu-24.04
+    env:
+      LLVM_VERSION: 21
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v6
+
+      - name: Install Clang-format
+        uses: nick-fields/retry@v3.0.2
+        with:
+          max_attempts: 5
+          timeout_minutes: 15
+          retry_wait_seconds: 60
+          command: |
+            wget https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh ${{ env.LLVM_VERSION }}
+            sudo apt install -y clang-format-${{ env.LLVM_VERSION }}
+
+      - name: Run clang-format check
+        run: |
+          cd source && find . -regex '.*\.\(cpp\|hpp\|cc\|cxx\|h\|c\)' -exec clang-format-${{ env.LLVM_VERSION }} -style=file --dry-run --Werror {} +
+
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-24.04
+    needs:
+      [
+        verify-formatting,
+      ]
+    if: always()
+    steps:
+      - uses: geekyeggo/delete-artifact@v5
+        continue-on-error: true
+        with:
+          name: "Temp *"
+
+      - name: Pipeline failed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
