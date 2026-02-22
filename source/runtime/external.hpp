@@ -15,5 +15,6 @@ namespace levo::runtime
         extern const DispatchEntry dispatch_table[];
         extern const uint8_t binary_data[];
         extern const uint64_t binary_size;
+        extern const uint64_t image_base;
     }
 }

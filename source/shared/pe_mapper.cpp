@@ -227,11 +227,40 @@ namespace levo
         {
             return map_pe_impl<pe_optional_header_32>(data, *file_header, section_table_offset, import_resolver);
         }
+
         if (optional_magic == pe::optional_header_magic_64)
         {
             return map_pe_impl<pe_optional_header_64>(data, *file_header, section_table_offset, import_resolver);
         }
 
         return {};
+    }
+
+    uint64_t get_entry_point(std::span<const uint8_t> data)
+    {
+        constexpr size_t dos_header_size = sizeof(pe_dos_header);
+        constexpr size_t file_header_size = sizeof(pe_file_header);
+
+        const auto* dos = reinterpret_cast<const pe_dos_header*>(data.data());
+        const auto* file_header = reinterpret_cast<const pe_file_header*>(data.data() + dos->e_lfanew);
+
+        const uint32_t e_lfanew = dos->e_lfanew;
+        const size_t nt_offset = e_lfanew + 4u; // after "PE\0\0"
+
+        const uint16_t optional_magic = *reinterpret_cast<const uint16_t*>(data.data() + nt_offset + file_header_size);
+
+        if (optional_magic == pe::optional_header_magic_32)
+        {
+            const auto* optional_header = reinterpret_cast<const pe_optional_header_32*>(data.data() + nt_offset + file_header_size);
+            return optional_header->address_of_entry_point;
+        }
+
+        if (optional_magic == pe::optional_header_magic_64)
+        {
+            const auto* optional_header = reinterpret_cast<const pe_optional_header_64*>(data.data() + nt_offset + file_header_size);
+            return optional_header->address_of_entry_point;
+        }
+
+        return 0;
     }
 }

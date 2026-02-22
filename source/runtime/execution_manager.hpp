@@ -1,6 +1,7 @@
 #pragma once
 #include "memory.hpp"
 
+#include <cstddef>
 #include <map>
 #include <span>
 #include <format>
@@ -8,6 +9,16 @@
 
 namespace levo::runtime
 {
+    size_t align_down(const size_t value, const size_t alignment)
+    {
+        return value & ~(alignment - 1);
+    }
+
+    size_t align_up(const size_t value, const size_t alignment)
+    {
+        return align_down(value + alignment - 1, alignment);
+    }
+
     class execution_manager : public Memory
     {
       public:
@@ -43,6 +54,13 @@ namespace levo::runtime
         void map(addr_t address, size_t size)
         {
             map(address, std::vector<uint8_t>(size, 0));
+        }
+
+        addr_t map_somewhere(size_t size)
+        {
+            const auto address = find_free_address(size);
+            map(address, size);
+            return address;
         }
 
         void unmap(addr_t address)
@@ -85,6 +103,24 @@ namespace levo::runtime
         // TODO: Lock
         std::map<addr_t, system_function*> functions_;
         std::map<addr_t, std::vector<uint8_t>> mapped_memory_;
+
+        addr_t find_free_address(const size_t size) const
+        {
+            constexpr addr_t allocation_granularity = 0x10000;
+            addr_t last_end = allocation_granularity;
+
+            for (const auto& [address, data] : mapped_memory_)
+            {
+                if (address >= (last_end + size))
+                {
+                    return last_end;
+                }
+
+                last_end = align_up(address + data.size(), allocation_granularity);
+            }
+
+            return last_end;
+        }
 
         std::span<uint8_t> get_memory(addr_t address, size_t size = 1)
         {

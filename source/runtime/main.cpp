@@ -79,8 +79,14 @@ namespace levo::runtime
 
                 return address;
             };
-            manager.map(0x400000, map_binary(import_resolver));
-            manager.map(0x100000, 0x100000);
+
+            auto binary = map_binary(import_resolver);
+            const auto entry_point = get_entry_point(binary);
+
+            manager.map(image_base, std::move(binary));
+
+            constexpr size_t stack_size = 0x100000;
+            const auto stack_address = manager.map_somewhere(stack_size);
 
             for (size_t i = 0;; i++)
             {
@@ -94,8 +100,8 @@ namespace levo::runtime
             }
 
             State state{};
-            state.gpr.rip.aword = 0x401040;
-            state.gpr.rsp.aword = 0x100000 + 0x100000 - 0x10;
+            state.gpr.rip.aword = static_cast<addr_t>(image_base + entry_point);
+            state.gpr.rsp.aword = align_down(stack_address + stack_size - 0x10, 0x10);
 
             manager.run(state);
 

@@ -609,6 +609,9 @@ namespace levo
             new llvm::GlobalVariable(dest_module, int64_type, true, llvm::GlobalValue::ExternalLinkage,
                                      llvm::ConstantInt::get(int64_type, binary_data.size()), "binary_size");
 
+            new llvm::GlobalVariable(dest_module, int64_type, true, llvm::GlobalValue::ExternalLinkage,
+                                     llvm::ConstantInt::get(int64_type, cfg.image_base), "image_base");
+
             llvm::outs() << "Optimizing module\n";
             OptimizeModule(dest_module, llvm::OptimizationLevel::O3);
 
@@ -626,6 +629,7 @@ namespace levo
                 llvm::errs() << "Cannot open output: " << ec.message() << "\n";
                 return 1;
             }
+
             dest_module.print(os, nullptr);
             llvm::outs() << "Lifted " << cfg.functions.size() << " functions to " << output_path << "\n";
 

@@ -172,4 +172,6 @@ namespace levo
     // If import_resolver is set, fills the Import Address Table with resolved addresses.
     // Supports both PE32 and PE32+; uses platform-independent structs only.
     std::vector<uint8_t> map_pe_file(std::span<const uint8_t> data, const pe_import_resolver_t& import_resolver = {});
+
+    uint64_t get_entry_point(std::span<const uint8_t> data);
 }
