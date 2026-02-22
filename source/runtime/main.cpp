@@ -1,11 +1,12 @@
 #include "system.hpp"
 #include "external.hpp"
-#include "handler_utils.hpp"
 #include "execution_manager.hpp"
+#include "handler_repository.hpp"
 
 #include <shared/io.hpp>
-#include <shared/finally.hpp>
 #include <shared/pe_mapper.hpp>
+
+#include "libs.hpp"
 
 namespace levo::runtime
 {
@@ -17,66 +18,24 @@ namespace levo::runtime
             return map_pe_file(data, import_resolver);
         }
 
-        addr_t f_GetStdHandle(const handler_context&, addr_t handle)
-        {
-            if (handle == (addr_t)-11)
-            {
-                return 1;
-            }
-
-            return (addr_t)~0ULL;
-        }
-
-        addr_t f_WriteFile(const handler_context& c, addr_t handle, addr_t buffer, uint32_t size, addr_t written_size, addr_t)
-        {
-            size_t written = 0;
-            const auto _ = finally([&] {
-                if (written_size)
-                {
-                    c.m.write(written_size, static_cast<uint32_t>(written));
-                }
-            });
-
-            if (handle != 1)
-            {
-                return 0;
-            }
-
-            const auto string = c.m.read(buffer, size);
-            written = fwrite(string->data(), 1, string->size(), stdout);
-
-            return 1;
-        }
-
-        void f_ExitProcess(const handler_context&, uint32_t exit_code)
-        {
-            exit(static_cast<int>(exit_code));
-        }
-
         int run()
         {
+            handler_repository repo{};
+            register_libs(repo);
+
             execution_manager manager{};
 
             addr_t import_address = 0xF << (ADDRESS_SIZE_BITS - 4);
 
-            const auto import_resolver = [&](std::string_view library_name, std::string_view function_name) {
+            const auto import_resolver = [&](std::string_view library, std::string_view function) {
+                auto* handler = repo.lookup(library, function);
+                if (!handler)
+                {
+                    throw std::runtime_error("Missing handler for " + std::string(library) + "::" + std::string(function));
+                }
+
                 const auto address = import_address++;
-                printf("Importing %.*s::%.*s at 0x%" ADDR_FORMAT "\n", (int)library_name.size(), library_name.data(),
-                       (int)function_name.size(), function_name.data(), address);
-
-                if (function_name == "GetStdHandle")
-                {
-                    manager.add_function(address, make_handler<calling_convention::stdcall, f_GetStdHandle>());
-                }
-                if (function_name == "WriteFile")
-                {
-                    manager.add_function(address, make_handler<calling_convention::stdcall, f_WriteFile>());
-                }
-                if (function_name == "ExitProcess")
-                {
-                    manager.add_function(address, make_handler<calling_convention::stdcall, f_ExitProcess>());
-                }
-
+                manager.add_function(address, handler);
                 return address;
             };
 
