@@ -1,5 +1,5 @@
 #include "memory.hpp"
-#include <print>
+#include <cstdio>
 
 namespace levo::runtime
 {
@@ -41,7 +41,7 @@ namespace levo::runtime
 
         Memory* __remill_async_hyper_call(State&, addr_t address, Memory*)
         {
-            std::println("Async hyper call to 0x{:x}", address);
+            printf("Async hyper call to 0x%" ADDR_FORMAT "\n", address);
             abort();
         }
 

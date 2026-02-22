@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <map>
 #include <span>
-#include <format>
+#include <array>
 #include <stdexcept>
 #include <shared_mutex>
 
@@ -106,7 +106,10 @@ namespace levo::runtime
             const auto function = get_function(state.gpr.rip.aword);
             if (!function)
             {
-                throw std::runtime_error(std::format("Function not found at 0x{:x}", state.gpr.rip.aword));
+                std::array<char, 100> buffer{};
+                snprintf(buffer.data(), buffer.size() - 1, "Function not found at 0x%" ADDR_FORMAT, state.gpr.rip.aword);
+
+                throw std::runtime_error(buffer.data());
             }
 
             //__attribute__((musttail))

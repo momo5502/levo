@@ -3,7 +3,6 @@
 #include "handler_utils.hpp"
 #include "execution_manager.hpp"
 
-#include <print>
 #include <shared/io.hpp>
 #include <shared/finally.hpp>
 #include <shared/pe_mapper.hpp>
@@ -62,7 +61,8 @@ namespace levo::runtime
 
             const auto import_resolver = [&](std::string_view library_name, std::string_view function_name) {
                 const auto address = import_address++;
-                std::println("Importing {}::{} at 0x{:x}", library_name, function_name, address);
+                printf("Importing %.*s::%.*s at 0x%" ADDR_FORMAT "\n", (int)library_name.size(), library_name.data(),
+                       (int)function_name.size(), function_name.data(), address);
 
                 if (function_name == "GetStdHandle")
                 {
@@ -121,6 +121,6 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::println("Error: {}", e.what());
+        printf("Error: %s\n", e.what());
     }
 }
