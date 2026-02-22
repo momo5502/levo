@@ -2,10 +2,12 @@
 #include "memory.hpp"
 
 #include <cstddef>
+#include <cstring>
 #include <map>
 #include <span>
 #include <array>
 #include <stdexcept>
+#include <mutex>
 #include <shared_mutex>
 
 namespace levo::runtime

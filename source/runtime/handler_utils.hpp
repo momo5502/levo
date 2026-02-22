@@ -28,7 +28,7 @@ namespace levo::runtime
         template <typename Result>
         void store_result(State& state, const Result& res)
         {
-            if (ADDRESS_SIZE_BITS == 64 || sizeof(res) <= sizeof(addr_t))
+            if constexpr (ADDRESS_SIZE_BITS == 64 || sizeof(res) <= sizeof(addr_t))
             {
                 state.gpr.rax.aword = static_cast<addr_t>(res);
             }
