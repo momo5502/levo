@@ -280,7 +280,7 @@ namespace levo
                 "lld-link", "/DEBUG", "/out:" + exe_path, "/SUBSYSTEM:CONSOLE", obj_path,
             };
 #else
-            std::vector<std::string> link_args = {"ld.lld", "-o", exe_path, obj_path};
+            std::vector<std::string> link_args = {"ld.lld", "-o", exe_path, obj_path, "-lc"};
 #endif
 
             for (const auto& library : libraries)
