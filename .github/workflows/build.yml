@@ -42,10 +42,10 @@ jobs:
 
   build-linux:
     name: Build Linux x86_64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # We use a clean container to avoid LLVM conflicts on the GH runner images
     container:
-      image: ubuntu:22.04
+      image: ubuntu:24.04
     steps:
       - name: Install LLVM and build tools
         run: |
@@ -72,8 +72,10 @@ jobs:
           echo "CC=clang-$LLVM_VERSION" >> $GITHUB_ENV
           echo "CXX=clang++-$LLVM_VERSION" >> $GITHUB_ENV
 
-      - name: Checkout
-        uses: actions/checkout@v5
+      - name: Checkout Source
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Add workspace as safe directory (necessary for docker)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -88,10 +90,40 @@ jobs:
           cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:FILEPATH=$PWD/dependencies/install" -DCMAKE_BUILD_TYPE=RelWithDebInfo
           cmake --build build
 
+  test-linux:
+    name: Test Linux x86_64
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+  
+      - name: Install Ghidra
+        uses: antoniovazquezblanco/setup-ghidra@v2.0.19
+        with:
+          version: "latest"
+
+      - name: Download sample binary
+        run: wget -q https://momo5502.com/emulator/sample.exe -O sample.exe
+
+      - name: Run Ghidra CFG export script
+        run: |
+          mkdir -p /tmp/ghidra_proj
+          "${{ env.GHIDRA_INSTALL_DIR }}/support/analyzeHeadless" \
+            /tmp/ghidra_proj sample_project \
+            -import "$GITHUB_WORKSPACE/sample.exe" \
+            -postScript ExportCFG.java "$GITHUB_WORKSPACE/cfg_output.json" \
+            -scriptPath "$GITHUB_WORKSPACE/ghidra_cfg"
+
   summary:
     name: Pipeline Summary
     runs-on: ubuntu-24.04
-    needs: [verify-formatting, build-linux]
+    needs: [verify-formatting, build-linux, test-linux]
     if: always()
     steps:
       - uses: geekyeggo/delete-artifact@v5
