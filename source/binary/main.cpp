@@ -311,10 +311,10 @@ namespace levo
             }
 #if defined(_WIN32)
             std::string obj_path = base + ".obj";
-            std::string exe_path = base + ".exe";
+            std::string exe_path = base + "_transpiled.exe";
 #else
             std::string obj_path = base + ".o";
-            std::string exe_path = base;
+            std::string exe_path = base + "_transpiled";
 #endif
             if (!emit_object_file(dest_module, obj_path))
             {
