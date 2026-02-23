@@ -1,4 +1,4 @@
-# LEVO
+# 🪁 Levo
 
 <a href="https://github.com/momo5502/levo?tab=GPL-3.0-1-ov-file.0-1-ov-file"><img src="https://img.shields.io/github/license/momo5502/levo?color=00B0F8"/></a>
 <a href="https://github.com/momo5502/levo/actions"><img src="https://img.shields.io/github/actions/workflow/status/momo5502/levo/build.yml?branch=main&label=build"/></a>
