@@ -238,11 +238,9 @@ namespace levo
             return true;
         }
 
-        // Link object to executable by invoking lld (lld-link on Windows).
-        // Uses LLVM_TOOLS_DIR if set, otherwise relies on PATH.
         bool link_executable(const std::string& obj_path, const std::string& exe_path, const std::filesystem::path& base_path)
         {
-            std::string lld_path;
+            std::string link_path;
             std::string lib_prefix;
             std::string lib_suffix;
 #if defined(LLVM_TOOLS_DIR)
@@ -254,19 +252,19 @@ namespace levo
                 tools_dir += llvm::sys::path::get_separator().str();
             }
 #if defined(_WIN32)
-            lld_path = tools_dir + "lld-link.exe";
+            link_path = tools_dir + "lld-link.exe";
             lib_prefix = "";
             lib_suffix = ".lib";
 #else
-            lld_path = tools_dir + "ld.lld";
+            link_path = tools_dir + "clang++";
             lib_prefix = "lib";
             lib_suffix = ".a";
 #endif
 #else
 #if defined(_WIN32)
-            lld_path = "lld-link";
+            link_path = "lld-link";
 #else
-            lld_path = "ld.lld";
+            link_path = "clang++";
 #endif
 #endif
 
@@ -280,7 +278,8 @@ namespace levo
                 "lld-link", "/DEBUG", "/out:" + exe_path, "/SUBSYSTEM:CONSOLE", obj_path,
             };
 #else
-            std::vector<std::string> link_args = {"ld.lld", "-o", exe_path, obj_path, "-lc"};
+            // Use clang++ to link so C++ runtime (typeinfo, vtables) and libc are included
+            std::vector<std::string> link_args = {"clang++", "-o", exe_path, obj_path};
 #endif
 
             for (const auto& library : libraries)
@@ -290,7 +289,7 @@ namespace levo
 
             std::vector<llvm::StringRef> link_refs(link_args.begin(), link_args.end());
             std::string err_msg;
-            int ret = llvm::sys::ExecuteAndWait(lld_path, link_refs, std::nullopt, {}, 0, 0, &err_msg);
+            int ret = llvm::sys::ExecuteAndWait(link_path, link_refs, std::nullopt, {}, 0, 0, &err_msg);
             if (ret != 0)
             {
                 llvm::errs() << "Link failed: " << err_msg << "\n";
