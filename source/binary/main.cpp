@@ -240,9 +240,11 @@ namespace levo
 
         // Link object to executable by invoking lld (lld-link on Windows).
         // Uses LLVM_TOOLS_DIR if set, otherwise relies on PATH.
-        bool link_executable(const std::string& obj_path, const std::string& exe_path)
+        bool link_executable(const std::string& obj_path, const std::string& exe_path, const std::filesystem::path& base_path)
         {
             std::string lld_path;
+            std::string lib_prefix;
+            std::string lib_suffix;
 #if defined(LLVM_TOOLS_DIR)
             llvm::SmallString<256> llvm_tools(LLVM_TOOLS_DIR);
             llvm::sys::path::native(llvm_tools);
@@ -253,8 +255,12 @@ namespace levo
             }
 #if defined(_WIN32)
             lld_path = tools_dir + "lld-link.exe";
+            lib_prefix = "";
+            lib_suffix = ".lib";
 #else
             lld_path = tools_dir + "ld.lld";
+            lib_prefix = "lib";
+            lib_suffix = ".a";
 #endif
 #else
 #if defined(_WIN32)
@@ -263,19 +269,25 @@ namespace levo
             lld_path = "ld.lld";
 #endif
 #endif
+
+            const std::vector<std::filesystem::path> libraries = {
+                base_path / ".." / "runtime" / (lib_prefix + "runtime" + lib_suffix),
+                base_path / ".." / "shared" / (lib_prefix + "shared" + lib_suffix),
+            };
+
 #if defined(_WIN32)
             std::vector<std::string> link_args = {
-                "lld-link",
-                "/DEBUG",
-                "/out:" + exe_path,
-                "/SUBSYSTEM:CONSOLE",
-                R"(C:\Users\mauri\Desktop\levo\build\source\runtime\runtime.lib)",
-                R"(C:\Users\mauri\Desktop\levo\build\source\shared\shared.lib)",
-                obj_path,
+                "lld-link", "/DEBUG", "/out:" + exe_path, "/SUBSYSTEM:CONSOLE", obj_path,
             };
 #else
             std::vector<std::string> link_args = {"ld.lld", "-o", exe_path, obj_path};
 #endif
+
+            for (const auto& library : libraries)
+            {
+                link_args.push_back(library.string());
+            }
+
             std::vector<llvm::StringRef> link_refs(link_args.begin(), link_args.end());
             std::string err_msg;
             int ret = llvm::sys::ExecuteAndWait(lld_path, link_refs, std::nullopt, {}, 0, 0, &err_msg);
@@ -289,7 +301,7 @@ namespace levo
         }
 
         // Emit object from Module (in-process) then invoke lld to link.
-        bool compile_and_link(llvm::Module& dest_module, const std::string& output_path)
+        bool compile_and_link(llvm::Module& dest_module, const std::string& output_path, const std::filesystem::path& base_path)
         {
             std::string base = output_path;
             const size_t dot = output_path.rfind('.');
@@ -308,7 +320,7 @@ namespace levo
             {
                 return false;
             }
-            if (!link_executable(obj_path, exe_path))
+            if (!link_executable(obj_path, exe_path, base_path))
             {
                 return false;
             }
@@ -506,6 +518,8 @@ namespace levo
             const char* binary_path = argv[arg_idx + 1];
             const char* output_path = argv[arg_idx + 2];
 
+            const auto base_path = std::filesystem::path(argv[0]).parent_path();
+
             Cfg cfg = load_cfg(cfg_path);
             const auto binary_data = load_binary(binary_path);
             const auto architecture = get_pe_architecture(binary_data);
@@ -641,7 +655,7 @@ namespace levo
 
             if (do_compile)
             {
-                if (!compile_and_link(dest_module, output_path))
+                if (!compile_and_link(dest_module, output_path, base_path))
                 {
                     return 1;
                 }
