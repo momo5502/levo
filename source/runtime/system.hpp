@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cfenv>
+#include <cfloat>
 #include <cstdint>
 #include <cinttypes>
 

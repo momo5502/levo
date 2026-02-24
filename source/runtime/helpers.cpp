@@ -1,6 +1,5 @@
 #include "memory.hpp"
 #include <cstdio>
-#include <cfenv>
 
 namespace levo::runtime
 {
