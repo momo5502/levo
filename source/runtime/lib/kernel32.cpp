@@ -2,6 +2,7 @@
 #include "../libs.hpp"
 #include <shared/finally.hpp>
 #include <chrono>
+#include <atomic>
 
 namespace levo::runtime
 {
