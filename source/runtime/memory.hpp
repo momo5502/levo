@@ -8,6 +8,7 @@ struct Memory
 {
     virtual bool read(addr_t address, void* buffer, size_t size) = 0;
     virtual bool write(addr_t address, const void* buffer, size_t size) = 0;
+    virtual bool compare_exchange(addr_t address, void* expected, void* desired, size_t size) = 0;
     virtual Memory* run(State& state) = 0;
 
     template <typename T>

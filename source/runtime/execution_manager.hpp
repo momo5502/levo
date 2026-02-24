@@ -54,6 +54,30 @@ namespace levo::runtime
             return true;
         }
 
+        bool compare_exchange(addr_t address, void* expected, void* desired, size_t size) override
+        {
+            std::unique_lock lock(memory_mutex_);
+
+            const auto memory = get_memory(address, size);
+            if (memory.size() < size)
+            {
+                return false;
+            }
+
+            const auto matches_expected = memcmp(memory.data(), expected, size) == 0;
+
+            if (matches_expected)
+            {
+                memcpy(memory.data(), desired, size);
+            }
+            else
+            {
+                memcpy(expected, memory.data(), size);
+            }
+
+            return true;
+        }
+
         void map(addr_t address, std::vector<uint8_t> data)
         {
             std::unique_lock lock(memory_mutex_);

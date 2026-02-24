@@ -494,8 +494,9 @@ namespace levo
         int run(int argc, char** argv)
         {
             llvm::InitLLVM init_llvm(argc, argv);
-            llvm::InitializeNativeTarget();
-            llvm::InitializeNativeTargetAsmPrinter();
+            llvm::InitializeAllTargets();
+            llvm::InitializeAllAsmParsers();
+            llvm::InitializeAllAsmPrinters();
             llvm::InitializeAllTargetMCs();
 
             bool do_compile = false;
@@ -549,7 +550,7 @@ namespace levo
                 return 1;
             }
 
-            remill::Arch::ArchPtr arch = remill::Arch::Get(context, "windows", bitness == 64 ? "amd64" : "x86");
+            remill::Arch::ArchPtr arch = remill::Arch::Get(context, "windows", bitness == 64 ? "amd64_avx512" : "x86_avx");
             if (!arch)
             {
                 llvm::errs() << "Failed to get remill arch (windows/amd64)\n";

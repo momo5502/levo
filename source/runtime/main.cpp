@@ -28,13 +28,16 @@ namespace levo::runtime
             addr_t import_address = static_cast<addr_t>(0xF) << (ADDRESS_SIZE_BITS - 4);
 
             const auto import_resolver = [&](std::string_view library, std::string_view function) {
+                const auto address = import_address++;
+
                 auto* handler = repo.lookup(library, function);
                 if (!handler)
                 {
-                    throw std::runtime_error("Missing handler for " + std::string(library) + "::" + std::string(function));
+                    printf("Missing handler for %.*s::%.*s at 0x%" ADDR_FORMAT "\n", (int)library.size(), library.data(),
+                           (int)function.size(), function.data(), address);
+                    return address;
                 }
 
-                const auto address = import_address++;
                 manager.add_function(address, handler);
                 return address;
             };
