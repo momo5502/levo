@@ -21,3 +21,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   remill_settings
   shared
 )
+
+add_dependencies(${PROJECT_NAME} runtime)

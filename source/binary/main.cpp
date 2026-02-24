@@ -238,7 +238,8 @@ namespace levo
             return true;
         }
 
-        bool link_executable(const std::string& obj_path, const std::string& exe_path, const std::filesystem::path& base_path)
+        bool link_executable(const std::string& obj_path, const std::string& exe_path, const std::filesystem::path& base_path,
+                             uint32_t bitness)
         {
             std::string link_path;
             std::string lib_prefix;
@@ -269,7 +270,7 @@ namespace levo
 #endif
 
             const std::vector<std::filesystem::path> libraries = {
-                base_path / ".." / "runtime" / (lib_prefix + "runtime" + lib_suffix),
+                base_path / ".." / "runtime" / (lib_prefix + "runtime_" + std::to_string(bitness) + lib_suffix),
                 base_path / ".." / "shared" / (lib_prefix + "shared" + lib_suffix),
             };
 
@@ -300,7 +301,8 @@ namespace levo
         }
 
         // Emit object from Module (in-process) then invoke lld to link.
-        bool compile_and_link(llvm::Module& dest_module, const std::string& output_path, const std::filesystem::path& base_path)
+        bool compile_and_link(llvm::Module& dest_module, const std::string& output_path, const std::filesystem::path& base_path,
+                              uint32_t bitness)
         {
             std::string base = output_path;
             const size_t dot = output_path.rfind('.');
@@ -319,7 +321,7 @@ namespace levo
             {
                 return false;
             }
-            if (!link_executable(obj_path, exe_path, base_path))
+            if (!link_executable(obj_path, exe_path, base_path, bitness))
             {
                 return false;
             }
@@ -532,7 +534,22 @@ namespace levo
 
             llvm::LLVMContext context;
 
-            remill::Arch::ArchPtr arch = remill::Arch::Get(context, "windows", *architecture == pe_architecture::x64 ? "amd64" : "x86");
+            uint32_t bitness{};
+            if (architecture == pe_architecture::x64)
+            {
+                bitness = 64;
+            }
+            else if (architecture == pe_architecture::x86)
+            {
+                bitness = 32;
+            }
+            else
+            {
+                llvm::errs() << "Failed to get PE architecture\n";
+                return 1;
+            }
+
+            remill::Arch::ArchPtr arch = remill::Arch::Get(context, "windows", bitness == 64 ? "amd64" : "x86");
             if (!arch)
             {
                 llvm::errs() << "Failed to get remill arch (windows/amd64)\n";
@@ -654,7 +671,7 @@ namespace levo
 
             if (do_compile)
             {
-                if (!compile_and_link(dest_module, output_path, base_path))
+                if (!compile_and_link(dest_module, output_path, base_path, bitness))
                 {
                     return 1;
                 }

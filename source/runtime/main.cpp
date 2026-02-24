@@ -25,7 +25,7 @@ namespace levo::runtime
 
             execution_manager manager{};
 
-            addr_t import_address = 0xF << (ADDRESS_SIZE_BITS - 4);
+            addr_t import_address = static_cast<addr_t>(0xF) << (ADDRESS_SIZE_BITS - 4);
 
             const auto import_resolver = [&](std::string_view library, std::string_view function) {
                 auto* handler = repo.lookup(library, function);

@@ -18,10 +18,14 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 
 list(SORT SRC_FILES)
 
-add_library(runtime ${SRC_FILES})
+macro(add_runtime_library bitness)
+add_library(runtime_${bitness} ${SRC_FILES})
+target_include_directories(runtime_${bitness} PRIVATE ${HELPER_REMILL_INCLUDE_DIR})
+target_compile_definitions(runtime_${bitness} PRIVATE -DADDRESS_SIZE_BITS=${bitness})
+target_link_libraries(runtime_${bitness} PRIVATE shared)
+endmacro()
 
-target_include_directories(runtime PRIVATE ${HELPER_REMILL_INCLUDE_DIR})
+add_runtime_library(32)
+add_runtime_library(64)
 
-target_compile_definitions(runtime PRIVATE -DADDRESS_SIZE_BITS=32)
-
-target_link_libraries(runtime PRIVATE shared)
+add_custom_target(runtime ALL DEPENDS runtime_32 runtime_64)
