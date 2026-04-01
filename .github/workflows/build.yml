@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Clang-format
-        uses: nick-fields/retry@v3.0.2
+        uses: nick-fields/retry@v4.0.0
         with:
           max_attempts: 5
           timeout_minutes: 15
